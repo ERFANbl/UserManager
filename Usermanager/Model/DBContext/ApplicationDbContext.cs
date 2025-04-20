@@ -150,7 +150,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<City>().HasData(cities);
 
 
-        // Seed Users
+        
         var users = new List<User>
     {
         new User
