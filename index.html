@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Manager</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // API Client Configuration
+    const api = axios.create({
+      baseURL: 'http://localhost:5002',
+    });
+
+    const getProvinces = () => api.get('/Location/provinces').then(res => res.data).catch(err => {
+      console.error('Error fetching provinces:', err);
+      return [];
+    });
+
+    const getCities = (provinceId) => api.get('/Location/cities', { params: { provinceId } }).then(res => res.data).catch(err => {
+      console.error('Error fetching cities:', err);
+      return [];
+    });
+
+    const getUsers = (pageNumber = 1, pageSize = 10) => api.get('/Users', { params: { pageNumber, pageSize } }).then(res => res.data).catch(err => {
+      console.error('Error fetching users:', err);
+      return [];
+    });
+
+    const getFilteredUsers = (provinceId, cityId) => api.get('/Users/filter', { params: { provinceId, cityId } }).then(res => res.data).catch(err => {
+      console.error('Error fetching filtered users:', err);
+      return [];
+    });
+
+    const createUser = (user, pageNumber = 1, pageSize = 10) => api.post('/Users/create', user, { params: { pageNumber, pageSize } }).then(res => res.data).catch(err => {
+      console.error('Error creating user:', err);
+      throw err;
+    });
+
+    const deleteUsers = (users, pageNumber = 1, pageSize = 10) => api.delete('/Users/delete', { data: users, params: { pageNumber, pageSize } }).then(res => res.data).catch(err => {
+      console.error('Error deleting users:', err);
+      return [];
+    });
+
+    // Create User Form Component
+    function CreateUserForm({ provinces = [], onSubmit }) {
+      const [firstName, setFirstName] = useState('');
+      const [lastName, setLastName] = useState('');
+      const [phoneNumber, setPhoneNumber] = useState('');
+      const [personnelNumber, setPersonnelNumber] = useState('');
+      const [selectedProvince, setSelectedProvince] = useState(null);
+      const [cities, setCities] = useState([]);
+      const [selectedCity, setSelectedCity] = useState(null);
+
+      useEffect(() => {
+        if (selectedProvince) {
+          getCities(selectedProvince.id).then(data => setCities(data));
+        } else {
+          setCities([]);
+          setSelectedCity(null);
+        }
+      }, [selectedProvince]);
+
+      const handleSubmit = () => {
+        if (!selectedProvince || !selectedCity) {
+          alert('Please select both province and city');
+          return;
+        }
+        if (!firstName.trim() || !lastName.trim()) {
+          alert('First name and last name are required');
+          return;
+        }
+        const user = {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phoneNumber: phoneNumber || null,
+          personnelNumber: personnelNumber || null,
+          provinceId: selectedProvince.id,
+          cityId: selectedCity.id,
+        };
+        console.log('Creating user with data:', user);
+        onSubmit(user);
+        setFirstName('');
+        setLastName('');
+        setPhoneNumber('');
+        setPersonnelNumber('');
+        setSelectedProvince(null);
+        setSelectedCity(null);
+      };
+
+      return (
+        <div className="mt-6 p-4 bg-gray-100 rounded-lg">
+          <h2 className="text-xl font-semibold mb-4">Create New User</h2>
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={firstName}
+              onChange={e => setFirstName(e.target.value)}
+              placeholder="First Name"
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="text"
+              value={lastName}
+              onChange={e => setLastName(e.target.value)}
+              placeholder="Last Name"
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="text"
+              value={phoneNumber}
+              onChange={e => setPhoneNumber(e.target.value)}
+              placeholder="Phone Number"
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="text"
+              value={personnelNumber}
+              onChange={e => setPersonnelNumber(e.target.value)}
+              placeholder="Personnel Number"
+              className="w-full p-2 border rounded"
+            />
+            <select
+              value={selectedProvince?.id || ''}
+              onChange={e => {
+                const province = provinces.find(p => p.id === Number(e.target.value));
+                setSelectedProvince(province || null);
+              }}
+              className="w-full p-2 border rounded"
+            >
+              <option value="">Select Province</option>
+              {(provinces || []).map(p => (
+                <option key={p.id} value={p.id}>{p.name || 'Unnamed'}</option>
+              ))}
+            </select>
+            <select
+              value={selectedCity?.id || ''}
+              onChange={e => {
+                const city = cities.find(c => c.id === Number(e.target.value));
+                setSelectedCity(city || null);
+              }}
+              className="w-full p-2 border rounded"
+              disabled={!selectedProvince}
+            >
+              <option value="">Select City</option>
+              {(cities || []).map(c => (
+                <option key={c.id} value={c.id}>{c.name || 'Unnamed'}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleSubmit}
+              className="w-full p-2 bg-green-500 text-white rounded hover:bg-green-600"
+            >
+              Create User
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Main App Component
+    function App() {
+      const [provinces, setProvinces] = useState([]);
+      const [selectedFilterProvince, setSelectedFilterProvince] = useState(null);
+      const [filterCities, setFilterCities] = useState([]);
+      const [selectedFilterCity, setSelectedFilterCity] = useState(null);
+      const [users, setUsers] = useState([]);
+      const [pageNumber, setPageNumber] = useState(1);
+      const [pageSize, setPageSize] = useState(10);
+      const [totalPages, setTotalPages] = useState(1);
+      const [selectedUserIds, setSelectedUserIds] = useState([]);
+      const [isFiltered, setIsFiltered] = useState(false);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+
+      // Fetch provinces on mount
+      useEffect(() => {
+        setLoading(true);
+        getProvinces().then(data => {
+          setProvinces(data);
+          setLoading(false);
+        }).catch(err => {
+          setError('Failed to load provinces');
+          setLoading(false);
+        });
+      }, []);
+
+      // Fetch users when pageNumber, pageSize, or isFiltered changes
+      useEffect(() => {
+        if (!isFiltered) {
+          setLoading(true);
+          getUsers(pageNumber, pageSize).then(data => {
+            const userList = Array.isArray(data) ? data : [];
+            setUsers(userList);
+            setTotalPages(Math.ceil(userList.length / pageSize) || 1);
+            setLoading(false);
+          }).catch(err => {
+            setError('Failed to load users');
+            setLoading(false);
+          });
+        }
+      }, [pageNumber, pageSize, isFiltered]);
+
+      // Fetch cities for filter when selectedFilterProvince changes
+      useEffect(() => {
+        if (selectedFilterProvince) {
+          getCities(selectedFilterProvince.id).then(data => setFilterCities(data));
+        } else {
+          setFilterCities([]);
+          setSelectedFilterCity(null);
+        }
+      }, [selectedFilterProvince]);
+
+      const applyFilters = () => {
+        if (selectedFilterProvince && selectedFilterCity) {
+          setLoading(true);
+          getFilteredUsers(selectedFilterProvince.id, selectedFilterCity.id).then(data => {
+            setUsers(data);
+            setIsFiltered(true);
+            setLoading(false);
+          }).catch(err => {
+            setError('Failed to apply filters');
+            setLoading(false);
+          });
+        } else {
+          setIsFiltered(false);
+        }
+      };
+
+      const clearFilters = () => {
+        setSelectedFilterProvince(null);
+        setSelectedFilterCity(null);
+        setIsFiltered(false);
+      };
+
+      const handleCreateUser = (user) => {
+        setLoading(true);
+        setError(null);
+        createUser(user, pageNumber, pageSize).then(updatedData => {
+          const userList = Array.isArray(updatedData) ? updatedData : [];
+          setUsers(userList);
+          setTotalPages(Math.ceil(userList.length / pageSize) || 1);
+          setIsFiltered(false);
+          setLoading(false);
+        }).catch(err => {
+          const errorMessage = err.response?.data?.errors 
+            ? Object.values(err.response.data.errors).flat().join(', ')
+            : 'Failed to create user';
+          setError(errorMessage);
+          setLoading(false);
+        });
+      };
+
+      const handleDeleteUsers = () => {
+        if (selectedUserIds.length === 0) return;
+        setLoading(true);
+        const usersToDelete = selectedUserIds.map(id => ({ id }));
+        deleteUsers(usersToDelete, pageNumber, pageSize).then(updatedData => {
+          const userList = Array.isArray(updatedData) ? updatedData : [];
+          setUsers(userList);
+          setTotalPages(Math.ceil(userList.length / pageSize) || 1);
+          setSelectedUserIds([]);
+          setIsFiltered(false);
+          setLoading(false);
+        }).catch(err => {
+          setError('Failed to delete users');
+          setLoading(false);
+        });
+      };
+
+      const toggleUserSelection = (userId) => {
+        setSelectedUserIds(prev => 
+          prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+      };
+
+      if (loading) return <div className="container mx-auto p-4">Loading...</div>;
+      if (error) return <div className="container mx-auto p-4 text-red-500">{error}</div>;
+
+      return (
+        <div className="container mx-auto p-4">
+          <h1 className="text-3xl font-bold mb-6">User Manager</h1>
+
+          {/* Filter Section */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <h2 className="text-xl font-semibold mb-4">Filter Users</h2>
+            <div className="flex space-x-4">
+              <select
+                value={selectedFilterProvince?.id || ''}
+                onChange={e => {
+                  const province = provinces.find(p => p.id === Number(e.target.value));
+                  setSelectedFilterProvince(province || null);
+                }}
+                className="p-2 border rounded"
+              >
+                <option value="">Select Province</option>
+                {(provinces || []).map(p => (
+                  <option key={p.id} value={p.id}>{p.name || 'Unnamed'}</option>
+                ))}
+              </select>
+              <select
+                value={selectedFilterCity?.id || ''}
+                onChange={e => {
+                  const city = filterCities.find(c => c.id === Number(e.target.value));
+                  setSelectedFilterCity(city || null);
+                }}
+                className="p-2 border rounded"
+                disabled={!selectedFilterProvince}
+              >
+                <option value="">Select City</option>
+                {(filterCities || []).map(c => (
+                  <option key={c.id} value={c.id}>{c.name || 'Unnamed'}</option>
+                ))}
+              </select>
+              <button
+                onClick={applyFilters}
+                className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Apply Filters
+              </button>
+              {isFiltered && (
+                <button
+                  onClick={clearFilters}
+                  className="p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* User List */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border">
+              <thead>
+                <tr className="bg-gray-200">
+                  <th className="p-2 border">Select</th>
+                  <th className="p-2 border">First Name</th>
+                  <th className="p-2 border">Last Name</th>
+                  <th className="p-2 border">Phone Number</th>
+                  <th className="p-2 border">Province</th>
+                  <th className="p-2 border">City</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(users || []).map(user => (
+                  <tr key={user.id} className="hover:bg-gray-100">
+                    <td className="p-2 border text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedUserIds.includes(user.id)}
+                        onChange={() => toggleUserSelection(user.id)}
+                      />
+                    </td>
+                    <td className="p-2 border">{user.firstName || '-'}</td>
+                    <td className="p-2 border">{user.lastName || '-'}</td>
+                    <td className="p-2 border">{user.phoneNumber || '-'}</td>
+                    <td className="p-2 border">{user.province?.name || '-'}</td>
+                    <td className="p-2 border">{user.city?.name || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {!isFiltered && (
+            <div className="mt-4 flex justify-center space-x-4">
+              <button
+                onClick={() => setPageNumber(p => Math.max(p - 1, 1))}
+                disabled={pageNumber === 1}
+                className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+              >
+                Previous
+              </button>
+              <span className="self-center">Page {pageNumber} of {totalPages}</span>
+              <button
+                onClick={() => setPageNumber(p => p + 1)}
+                disabled={pageNumber >= totalPages}
+                className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
+              >
+                Next
+              </button>
+            </div>
+          )}
+
+          {/* Delete Button */}
+          <div className="mt-4">
+            <button
+              onClick={handleDeleteUsers}
+              disabled={selectedUserIds.length === 0}
+              className="p-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400"
+            >
+              Delete Selected
+            </button>
+          </div>
+
+          {/* Create User Form */}
+          <CreateUserForm provinces={provinces} onSubmit={handleCreateUser} />
+        </div>
+      );
+    }
+
+    // Render the App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
