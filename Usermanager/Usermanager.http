@@ -1,0 +1,32 @@
+@Usermanager_HostAddress = https://localhost:5000
+
+POST {{Usermanager_HostAddress}}/api/Users/Create/
+Content-Type: application/json
+Accept: application/json
+
+{
+  "firstName": "John",
+  "lastName": "Doe",
+  "phoneNumber": "09121238200",
+  "personnelNumber": "123",
+  "provinceId": 1,
+  "cityId": 1
+}
+###
+
+
+
+DELETE {{Usermanager_HostAddress}}/api/users/delete
+Content-Type: application/json
+Accept: application/json
+{
+  {
+  "id":3
+  "firstName": "John",
+  "lastName": "Doe",
+  "phoneNumber": "09121238200",
+  "province": null,
+  "city": null
+  },
+}
+###
