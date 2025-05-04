@@ -203,6 +203,67 @@ public class ApplicationDbContext : DbContext
         AddCities(28, "گرگان", "گنبد", "علی‌آباد", "آق‌قلا", "کلاله");
 
         modelBuilder.Entity<City>().HasData(cities);
+<<<<<<< HEAD
+=======
+
+
+        
+        var users = new List<User>
+    {
+        new User
+        {
+            Id = 1,
+            FirstName = "علی",
+            LastName = "رضایی",
+            PhoneNumber = "09123456789",
+            PersonnelNumber = "EMP1001",
+            ProvinceId = 1,  // تهران
+            CityId = 1      // تهران
+        },
+        new User
+        {
+            Id = 2,
+            FirstName = "فاطمه",
+            LastName = "محمدی",
+            PhoneNumber = "09129876543",
+            PersonnelNumber = "EMP1002",
+            ProvinceId = 2,  // البرز
+            CityId = 2       // کرج
+        },
+        new User
+        {
+            Id = 3,
+            FirstName = "رضا",
+            LastName = "کریمی",
+            PhoneNumber = "09151234567",
+            PersonnelNumber = "EMP1003",
+            ProvinceId = 3,  // اصفهان
+            CityId = 3       // اصفهان
+        },
+        new User
+        {
+            Id = 4,
+            FirstName = "سارا",
+            LastName = "نجفی",
+            PhoneNumber = "09351234567",
+            PersonnelNumber = "EMP1004",
+            ProvinceId = 4,  // فارس
+            CityId = 4       // شیراز
+        },
+        new User
+        {
+            Id = 5,
+            FirstName = "محمد",
+            LastName = "حسینی",
+            PhoneNumber = "09161234567",
+            PersonnelNumber = "EMP1005",
+            ProvinceId = 5,  // خراسان رضوی
+            CityId = 5       // مشهد
+        }
+       };
+
+        modelBuilder.Entity<User>().HasData(users);
+>>>>>>> f5cd38e14d9206e34a930935935d92bf3a714736
     }
 }
 

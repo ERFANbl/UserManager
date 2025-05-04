@@ -29,14 +29,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowMyFrontend", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5001",    // React/Vue dev server,
-                "http://localhost:5002"// Your production domain
+                "http://localhost:5001",
+                "http://localhost:5002"
               )
               .AllowAnyHeader()
               .AllowAnyMethod();
-
-        // Only add this if you need cookies/auth headers
-        // .AllowCredentials();
     });
 });
 
