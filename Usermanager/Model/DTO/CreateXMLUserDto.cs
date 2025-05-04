@@ -1,9 +1,7 @@
-﻿namespace Usermanager.Model.Entity;
+﻿namespace Usermanager.Model.DTO;
 
-public class User
+public class CreateXMLUserDto
 {
-    public int Id { get; set; }
-
     public string? FirstName { get; set; }
 
     public string? LastName { get; set; }
@@ -13,9 +11,6 @@ public class User
     public string? PersonnelNumber { get; set; }
 
     public int CityId { get; set; }
-    public City ?City { get; set; }
 
-    public int? GroupID { get; set; }
-    public Group? Group { get; set; }
+    public int? GroupId { get; set; }
 }
-

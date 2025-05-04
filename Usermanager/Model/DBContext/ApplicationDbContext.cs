@@ -1,5 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.SqlServer;
+using System.Text.Json;
 using Usermanager.Model.Entity;
 
 namespace Usermanager.Model.DBContext;
@@ -15,7 +17,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<Province> Provinces { get; set; } = null!;
     public DbSet<City> Cities { get; set; } = null!;
 
+    public DbSet<Department> Departments { get; set; } = null!;
 
+    public DbSet<Group> Groups { get; set; } = null!;
+
+    public DbSet<Role> Roles { get; set; } = null!;
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -42,15 +48,13 @@ public class ApplicationDbContext : DbContext
                   .IsRequired()
                   .HasMaxLength(20);
 
-            entity.HasOne(u => u.Province)
-                   .WithMany()
-                   .HasForeignKey(u => u.ProvinceId)
-                   .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(u => u.City)
-                   .WithMany()
-                   .HasForeignKey(u => u.CityId)
-                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(u => u.Group)
+                  .WithMany(p => p.Users)
+                  .HasForeignKey(u => u.GroupID)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+
         });
 
         modelBuilder.Entity<Province>(entity =>
@@ -59,6 +63,11 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(p => p.Name)
                   .HasMaxLength(100);
+
+            entity.HasMany(d => d.Cities)
+                  .WithOne(g => g.Province)
+                  .HasForeignKey(g => g.ProvinceId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<City>(entity =>
@@ -68,10 +77,56 @@ public class ApplicationDbContext : DbContext
             entity.Property(c => c.Name)
                   .HasMaxLength(100);
 
-            entity.HasOne(c => c.Province)
-                  .WithMany(p => p.Cities)
-                  .HasForeignKey(c => c.ProvinceId)
+            entity.HasMany(d => d.Users)
+                  .WithOne(g => g.City)
+                  .HasForeignKey(g => g.CityId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Department>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+
+            entity.Property(d => d.Name)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+            entity.HasMany(d => d.Groups)
+                  .WithOne(g => g.Department)
+                  .HasForeignKey(g => g.DepartmentID)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasKey(g => g.Id);
+            entity.Property(e => e.Accessibility)
+                  .HasConversion(
+                      v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                      v => JsonSerializer.Deserialize<List<UserAccess>>(v, (JsonSerializerOptions)null),
+                      new ValueComparer<List<UserAccess>>(
+                          (c1, c2) => c1 != null && c2 != null && c1.SequenceEqual(c2),
+                          c => c != null ? c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())) : 0,
+                          c => c != null ? c.ToList() : null
+                      ))
+                  .HasColumnType("nvarchar(max)");
+
+            entity.HasIndex(r => r.Name).IsUnique(); 
+        });
+
+        modelBuilder.Entity<Group>(entity =>
+        {
+            entity.HasKey(g => g.Id);
+
+            entity.Property(g => g.Name)
+                  .IsRequired()
+                  .HasMaxLength(100);
+
+
+            entity.HasMany(g => g.Roles)
+                  .WithMany(d => d.Groups);
+
         });
 
         var provinces = new List<Province>
@@ -148,64 +203,6 @@ public class ApplicationDbContext : DbContext
         AddCities(28, "گرگان", "گنبد", "علی‌آباد", "آق‌قلا", "کلاله");
 
         modelBuilder.Entity<City>().HasData(cities);
-
-
-        // Seed Users
-        var users = new List<User>
-    {
-        new User
-        {
-            Id = 1,
-            FirstName = "علی",
-            LastName = "رضایی",
-            PhoneNumber = "09123456789",
-            PersonnelNumber = "EMP1001",
-            ProvinceId = 1,  // تهران
-            CityId = 1      // تهران
-        },
-        new User
-        {
-            Id = 2,
-            FirstName = "فاطمه",
-            LastName = "محمدی",
-            PhoneNumber = "09129876543",
-            PersonnelNumber = "EMP1002",
-            ProvinceId = 2,  // البرز
-            CityId = 2       // کرج
-        },
-        new User
-        {
-            Id = 3,
-            FirstName = "رضا",
-            LastName = "کریمی",
-            PhoneNumber = "09151234567",
-            PersonnelNumber = "EMP1003",
-            ProvinceId = 3,  // اصفهان
-            CityId = 3       // اصفهان
-        },
-        new User
-        {
-            Id = 4,
-            FirstName = "سارا",
-            LastName = "نجفی",
-            PhoneNumber = "09351234567",
-            PersonnelNumber = "EMP1004",
-            ProvinceId = 4,  // فارس
-            CityId = 4       // شیراز
-        },
-        new User
-        {
-            Id = 5,
-            FirstName = "محمد",
-            LastName = "حسینی",
-            PhoneNumber = "09161234567",
-            PersonnelNumber = "EMP1005",
-            ProvinceId = 5,  // خراسان رضوی
-            CityId = 5       // مشهد
-        }
-       };
-
-        modelBuilder.Entity<User>().HasData(users);
     }
 }
 

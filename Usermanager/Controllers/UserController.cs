@@ -8,7 +8,7 @@ namespace Usermanager.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [EnableCors("AllowMyFrontend")] // Use the policy name you defined
+    [EnableCors("AllowMyFrontend")] 
     public class UsersController : ControllerBase
     {
         private readonly IUserService _userService;
@@ -32,7 +32,7 @@ namespace Usermanager.Controllers
 
         [HttpPost]
         [Route("create")]
-        public IActionResult CreateUser([FromBody] User user, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
+        public IActionResult CreateUser([FromBody] UserCreateDto user, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var ok = _userService.CreateUser(user);
             if (!ok)
@@ -44,7 +44,7 @@ namespace Usermanager.Controllers
 
         [HttpDelete]
         [Route("delete")]
-        public IActionResult DeleteUsers([FromBody] IEnumerable<UserDto> users, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 1)
+        public IActionResult DeleteUsers([FromBody] IEnumerable<UserDto> users, [FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
         {
             var ok = _userService.DeleteUsers(users);
             if (!ok)
@@ -52,6 +52,51 @@ namespace Usermanager.Controllers
 
             var list = _userService.GetUsers(pageNumber, pageSize);
             return Ok(list);
+        }
+
+        [HttpPost("import")]
+        public async Task<IActionResult> ImportUsers(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file recived");
+
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext != ".xls" && ext != ".xlsx")
+                return BadRequest("File shuld be in Excel format");
+
+            using var stream = file.OpenReadStream();
+            var count = await _userService.ImportFromExcelAsync(stream);
+            return Ok(new { Created = count });
+        }
+
+        [HttpPost("{userId}/assign")]
+        public async Task<ActionResult> AssignUserToGroup(int userId, [FromBody] AssignUserToGroupDto dto)
+        {
+            await _userService.AssignUserToGroupAsync(userId, dto.DepartmentId, dto.GroupId);
+            return Ok();
+        }
+
+        [HttpGet("{userId}/permissions")]
+        public async Task<ActionResult<AccessibilityDto>> GetUserPermissions(int userId)
+        {
+            var permissions = await _userService.GetUserPermissionsAsync(userId);
+            return Ok(permissions);
+        }
+
+        [HttpGet("export/excel")]
+        public async Task<IActionResult> ExportUsersToExcel()
+        {
+            var ms = await _userService.ExportAllToExcelAsync();
+            return File(ms.ToArray(),
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        "Users.xlsx");
+        }
+
+        [HttpGet("export/pdf")]
+        public async Task<IActionResult> ExportUsersToPdf()
+        {
+            var pdfBytes = await _userService.ExportAllToPdfAsync();
+            return File(pdfBytes, "application/pdf", "Users.pdf");
         }
     }
 }
